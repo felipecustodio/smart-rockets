@@ -8,7 +8,7 @@ int samplesPerFrame = 5;
 float shutterAngle = 1.5;
 int[][] result;
 
-boolean recording = true;
+boolean recording = false;
 int numFrames = 1500;
 PFont font;
 
@@ -83,10 +83,11 @@ color[] colors = {
                     #f18a9b,
                     #ffb480,
                     #ffba5a,
+                    #45315d
                 };
 
 int lifetime;  // how long should each generation live
-int population_size = 1;
+int population_size = 5;
 
 // one color per population
 Population[] populations = new Population[colors.length];
@@ -95,6 +96,10 @@ int lifecycle; // timer
 
 Obstacle target; // target
 ArrayList<Obstacle> obstacles; // obstacles
+
+int start;
+int timer;
+boolean timer_finished = false;
 
 void setup() {
   // 720p
@@ -112,7 +117,6 @@ void setup() {
   lifetime = 300;
 
   lifecycle = 0;
-  recordtime = lifetime;
   
   // initialize target at top of screen
   target = new Obstacle(width/2-12, 24, 24, 24);
@@ -128,6 +132,7 @@ void setup() {
   obstacles.add(new Obstacle(width/2+100, height/2 -100, 200, 10));
   obstacles.add(new Obstacle(width/2-300, height/2 -100, 200, 10));
 
+  timer = millis();
 }
 
 // drawing loop
