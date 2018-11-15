@@ -72,29 +72,15 @@ class TImage extends PImage implements Runnable {
   }
 }
 
-// colors for populations (10 populations)
-color[] colors = {  
-                    #ff7657, 
-                    #665c84, 
-                    #a26ea1, 
-                    #f18a9b, 
-                    #ffb480,
-                    #a26ea1,
-                    #f18a9b,
-                    #ffb480,
-                    #ffba5a,
-                    #45315d
-                };
+int lifetime = 300; // duration of a generation
 
-// int lifetime = 300 * 30; // how long each generation lasts
-int lifetime = 1000; // how long each generation lasts
-// int population_size = 10; // individuals in each population
-int population_size = 900; // individuals in each population
+int num_populations = 1000; // number of populations
+int population_size = 90; // individuals in each population
 
 int finished_counter = 0;
 
 // one color per population
-Population[] populations = new Population[colors.length];
+Population[] populations = new Population[num_populations];
 
 class Obstacle {
 
@@ -199,9 +185,6 @@ class Rocket {
   // size
   float r;
 
-  // color
-  color c = colors[(int)random(colors.length)];
-
   // distance to target
   float recordDist;
 
@@ -215,7 +198,7 @@ class Rocket {
   int finishTime;
 
   // constructor
-  Rocket(PVector l, DNA dna_, int totalRockets, color c_) {
+  Rocket(PVector l, DNA dna_, int totalRockets) {
 
     obstacles = new ArrayList<Obstacle>();
     obstacles.add(new Obstacle(width/2-100, height/2 + 200, 200, 10));
@@ -231,7 +214,6 @@ class Rocket {
     dna = dna_;
     finishTime = 0;
     recordDist = 10000;
-    c = c_;
   }
 
   // FITNESS FUNCTION 
@@ -308,7 +290,9 @@ class Rocket {
     translate(position.x, position.y);
     rotate(theta);
 
-    fill(c);
+    strokeWeight(2);
+    stroke(255);
+    fill(0);
     noStroke();
     beginShape(TRIANGLES);
     vertex(0, -r*2);
@@ -335,7 +319,6 @@ class Population {
   Rocket[] population;         // Array to hold the current population
   ArrayList<Rocket> matingPool;    // ArrayList which we will use for our "mating pool"
   int generations;             // Number of generations
-  color pop_color;
 
   int id;
 
@@ -345,17 +328,16 @@ class Population {
   boolean criteria_met = false;
 
    // Initialize the population
-   Population(float m, int num, color c, int id_) {
+   Population(float m, int num, int id_) {
     mutationRate = m;
     population = new Rocket[num]; // initialize population of 'num' rockets
     matingPool = new ArrayList<Rocket>(); // initialize mating pool as array of rockets
     generations = 0; 
-    pop_color = c;
     id = id_;
     // make a new set of rockets
     for (int i = 0; i < population.length; i++) {
       PVector position = new PVector(width/2,height+20);
-      population[i] = new Rocket(position, new DNA(),population.length, pop_color);
+      population[i] = new Rocket(position, new DNA(),population.length);
     }
   }
 
@@ -404,7 +386,7 @@ class Population {
       child.mutate(mutationRate);
       // Fill the new population with the new child
       PVector position = new PVector(width/2,height+20);
-      population[i] = new Rocket(position, child,population.length, pop_color);
+      population[i] = new Rocket(position, child,population.length);
     }
     generations++;
   }
@@ -460,6 +442,12 @@ void setup() {
   size(1280, 720, P2D);
   smooth(8);
 
+  // results csv
+  Table results = new Table();
+
+  results.addColumn("test_id");
+  results.addColumn("time");
+
   // assets
   font = loadFont("CMUSerif-BoldItalic-64.vlw");
   textFont(font, 18);
@@ -467,21 +455,32 @@ void setup() {
   // motion blur matrix
   result = new int[width*height][3];
 
-  start = millis();
-
-  // initialize populations
-  for (int i = 0; i < populations.length; i++) {
-    populations[i] = new Population(0.01, population_size, colors[i], i);
-  }
-
-  while (finished_counter < populations.length) {
-    for (int i = 0; i < populations.length; i++) {
-      populations[i].run();
+  
+  // run 100 tests
+  for (int i = 0; i < 100; i++) {
+    // write results csv
+    TableRow newRow = results.addRow();
+    newRow.setInt("test_id", i+1);
+    // initialize populations
+    populations = new Population[num_populations];
+    finished_counter = 0;
+    for (int j = 0; j < populations.length; j++) {
+      populations[j] = new Population(0.01, population_size, j);
     }
+    // run all populations sequentially until goal is met for each one
+    start = millis();
+    while (finished_counter < populations.length) {
+      for (int k = 0; k < populations.length; k++) {
+        populations[k].run();
+      }
+    }
+    // finished, save time elapsed
+    timer = millis() - start;
+    println("TIME ELAPSED: " + timer);
+    newRow.setInt("time", timer);
   }
 
-  timer = millis() - start;
-  println("TIME ELAPSED: " + timer);
+  saveTable(results, "data/sequential_ " + num_populations + "_" + population_size + ".csv");
 
 }
 

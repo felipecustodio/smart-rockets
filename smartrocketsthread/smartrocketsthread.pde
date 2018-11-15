@@ -87,11 +87,13 @@ color[] colors = {
                 };
 
 // int lifetime = 300 * 30; // how long each generation lasts
-int lifetime = 1000; // how long each generation lasts
+int lifetime = 300; // how long each generation lasts
 // int population_size = 10; // individuals in each population
-int population_size = 900; // individuals in each population
 
-int finished_counter = 0;
+int num_populations = 4;
+int population_size = 90; // individuals in each population
+
+volatile int finished_counter = 0;
 
 // one color per population
 Population[] populations = new Population[colors.length];
@@ -199,9 +201,6 @@ class Rocket {
   // size
   float r;
 
-  // color
-  color c = colors[(int)random(colors.length)];
-
   // distance to target
   float recordDist;
 
@@ -215,7 +214,7 @@ class Rocket {
   int finishTime;
 
   // constructor
-  Rocket(PVector l, DNA dna_, int totalRockets, color c_) {
+  Rocket(PVector l, DNA dna_, int totalRockets) {
 
     obstacles = new ArrayList<Obstacle>();
     obstacles.add(new Obstacle(width/2-100, height/2 + 200, 200, 10));
@@ -231,7 +230,6 @@ class Rocket {
     dna = dna_;
     finishTime = 0;
     recordDist = 10000;
-    c = c_;
   }
 
   // FITNESS FUNCTION 
@@ -308,7 +306,9 @@ class Rocket {
     translate(position.x, position.y);
     rotate(theta);
 
-    fill(c);
+    strokeWeight(2);
+    stroke(255);
+    fill(0);
     noStroke();
     beginShape(TRIANGLES);
     vertex(0, -r*2);
@@ -337,7 +337,6 @@ class Population implements Runnable {
   Rocket[] population;         // Array to hold the current population
   ArrayList<Rocket> matingPool;    // ArrayList which we will use for our "mating pool"
   int generations;             // Number of generations
-  color pop_color;
 
   int cycles = 0;
 
@@ -345,16 +344,15 @@ class Population implements Runnable {
   boolean criteria_met = false;
 
    // Initialize the population
-   Population(float m, int num, color c) {
+   Population(float m, int num) {
     mutationRate = m;
     population = new Rocket[num]; // initialize population of 'num' rockets
     matingPool = new ArrayList<Rocket>(); // initialize mating pool as array of rockets
     generations = 0; 
-    pop_color = c;
     // make a new set of rockets
     for (int i = 0; i < population.length; i++) {
       PVector position = new PVector(width/2,height+20);
-      population[i] = new Rocket(position, new DNA(),population.length, pop_color);
+      population[i] = new Rocket(position, new DNA(),population.length);
     }
   }
 
@@ -362,6 +360,13 @@ class Population implements Runnable {
     t = new Thread(this);
     println("POPULAÇÃO [" + t.getId() + "] - Disparando thread...");
     t.start();
+
+    // try {
+    //   t.join();
+    // } catch (Exception e) {
+    //   e.printStackTrace();
+    // }
+    
   }
 
   void fitness() {
@@ -409,7 +414,7 @@ class Population implements Runnable {
       child.mutate(mutationRate);
       // Fill the new population with the new child
       PVector position = new PVector(width/2,height+20);
-      population[i] = new Rocket(position, child,population.length, pop_color);
+      population[i] = new Rocket(position, child,population.length);
     }
     generations++;
   }
@@ -451,8 +456,9 @@ class Population implements Runnable {
         // println("POPULAÇÃO [" + t.getId() + "] - Nova Geração: " + generations);
       }
     }
-    println("POPULAÇÃO [" + t.getId() + "] - OBJETIVO CONCLUÍDO. Geração: " + generations);
+    // println("POPULAÇÃO [" + t.getId() + "] - OBJETIVO CONCLUÍDO. Geração: " + generations);
     finished_counter++;
+    // println("Global finish counter: " + finished_counter);
   }
 }
 
@@ -465,6 +471,12 @@ void setup() {
   size(1280, 720, P2D);
   smooth(8);
 
+  // results csv
+  Table results = new Table();
+
+  results.addColumn("test_id");
+  results.addColumn("time");
+
   // assets
   font = loadFont("CMUSerif-BoldItalic-64.vlw");
   textFont(font, 18);
@@ -474,36 +486,48 @@ void setup() {
 
   start = millis();
 
-  // initialize populations
-  for (int i = 0; i < populations.length; i++) {
-    populations[i] = new Population(0.01, population_size, colors[i]);
+  // run 100 tests
+  for (int i = 0; i < 100; i++) {
+    // write results csv
+    TableRow newRow = results.addRow();
+    newRow.setInt("test_id", i+1);
+    // initialize populations
+    populations = new Population[num_populations];
+    finished_counter = 0;
+    for (int j = 0; j < populations.length; j++) {
+      populations[j] = new Population(0.01, population_size);
+    }
+    // run all populations threaded until goal is met for each one
+    start = millis();
+    println("Firing threads...");
+    for (int j = 0; j < populations.length; j++) {
+      populations[j].startPopulation();
+    }
+    
+    println("TEST: " + i);
+    println("Waiting for threads to finish...");
+    while (finished_counter < populations.length) { }
+
+    // for (int k = 0; k < populations.length; k++) {
+    //   try {
+    //     populations[k].t.join();
+    //   } catch (InterrupedException e) {
+    //     e.printStackTrace();
+    //   }
+    // }
+
+    // finished, save time elapsed
+    timer = millis() - start;
+    println("TEST: " + i);
+    println("TIME ELAPSED: " + timer);
+    newRow.setInt("time", timer);
   }
 
-  // start populations threads
-  println("Firing threads...");
-  for (int i = 0; i < populations.length; i++) {
-    populations[i].startPopulation();
-  }
-
-  println("Waiting for populations to meet criteria...");
-  // while (finished_counter < populations.length) {
-  //   println("i'm here");
-  //   timer = millis() - start;
-  // }
-
-  timer = millis() - start;
-  println("TIME ELAPSED: " + timer);
-
+  saveTable(results, "data/threaded_ " + num_populations + "_" + population_size + ".csv");
 }
 
 // drawing loop
 void draw_() {
-
-   if (finished_counter >= populations.length && !timer_finished) {
-    timer = millis() - start;
-    timer_finished = true;
-    println("TIME ELAPSED: " + timer);
-  }
 
   background(#f9f8eb);
 
