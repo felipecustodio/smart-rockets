@@ -1,3 +1,19 @@
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class smartrocketsseq extends PApplet {
+
 // inspired by Jer Thorp's Smart Rockets
 // http://www.blprnt.com/smartrockets/
 // Reference:
@@ -5,25 +21,25 @@
 
 // motion blur settings
 int samplesPerFrame = 5;
-float shutterAngle = 1.5;
+float shutterAngle = 1.5f;
 int[][] result;
 
 boolean recording = false;
 int numFrames = 1500;
 PFont font;
 
-void push() {
+public void push() {
   pushMatrix();
   pushStyle();
 }
 
-void pop() {
+public void pop() {
   popStyle();
   popMatrix();
 }
 
 // motion blur helper
-void draw() {
+public void draw() {
     for (int i=0; i<width*height; i++)
       for (int a=0; a<3; a++)
         result[i][a] = 0;
@@ -41,9 +57,9 @@ void draw() {
     loadPixels();
     for (int i=0; i<pixels.length; i++)
       pixels[i] = 0xff << 24 |
-        int(result[i][0]*1.0/samplesPerFrame) << 16 |
-        int(result[i][1]*1.0/samplesPerFrame) << 8 |
-        int(result[i][2]*1.0/samplesPerFrame);
+        PApplet.parseInt(result[i][0]*1.0f/samplesPerFrame) << 16 |
+        PApplet.parseInt(result[i][1]*1.0f/samplesPerFrame) << 8 |
+        PApplet.parseInt(result[i][2]*1.0f/samplesPerFrame);
     updatePixels();
 
     if (frameCount <= numFrames && recording) {
@@ -93,15 +109,15 @@ class Obstacle {
     h = h_;
   }
 
-  void display() {
+  public void display() {
     strokeWeight(1);
-    stroke(#3a3a59);
-    fill(#3a3a59);
+    stroke(0xff3a3a59);
+    fill(0xff3a3a59);
     rectMode(CORNER);
     rect(position.x,position.y,w,h);
   }
 
-  boolean contains(PVector spot) {
+  public boolean contains(PVector spot) {
     if (spot.x > position.x && spot.x < position.x + w && spot.y > position.y && spot.y < position.y + h) {
       return true;
     } else {
@@ -117,7 +133,7 @@ class DNA {
   PVector[] genes;
 
   // The maximum strength of the forces
-  float maxforce = 0.1;
+  float maxforce = 0.1f;
 
   // Constructor (makes a DNA of random PVectors)
   DNA() {
@@ -141,10 +157,10 @@ class DNA {
 
   // CROSSOVER
   // Creates new DNA sequence from two (this & and a partner)
-  DNA crossover(DNA partner) {
+  public DNA crossover(DNA partner) {
     PVector[] child = new PVector[genes.length];
     // Pick a midpoint
-    int crossover = int(random(genes.length));
+    int crossover = PApplet.parseInt(random(genes.length));
     // Take "half" from one and "half" from the other
     for (int i = 0; i < genes.length; i++) {
       if (i > crossover) child[i] = genes[i];
@@ -155,7 +171,7 @@ class DNA {
   }
 
   // Based on a mutation probability, picks a new random Vector
-  void mutate(float m) {
+  public void mutate(float m) {
     for (int i = 0; i < genes.length; i++) {
       if (random(1) < m) {
         float angle = random(TWO_PI);
@@ -221,7 +237,7 @@ class Rocket {
   // finish = what order did i finish (first, second, etc. . .)
   // f(distance,finish) =   (1.0f / finish^1.5) * (1.0f / distance^6);
   // a lower finish is rewarded (exponentially) and/or shorter distance to target (exponetially)
-  void fitness() {
+  public void fitness() {
     if (recordDist < 1) recordDist = 1;
 
     // Reward finishing faster and getting close
@@ -230,11 +246,11 @@ class Rocket {
     // Make the function exponential
     fitness = pow(fitness, 4);
 
-    if (hitObstacle) fitness *= 0.1; // lose 90% of fitness hitting an obstacle
+    if (hitObstacle) fitness *= 0.1f; // lose 90% of fitness hitting an obstacle
     if (hitTarget) fitness *= 2; // twice the fitness for finishing!
   }
 
-  boolean checkTarget() {
+  public boolean checkTarget() {
     float d = dist(position.x, position.y, target.position.x, target.position.y);
     if (d < recordDist) recordDist = d;
 
@@ -253,7 +269,7 @@ class Rocket {
 
   }
 
-  void obstacles() {
+  public void obstacles() {
     for (Obstacle obs : obstacles) {
       if (obs.contains(position)) {
         hitObstacle = true;
@@ -261,11 +277,11 @@ class Rocket {
     }
   }
 
-  void applyForce(PVector f) {
+  public void applyForce(PVector f) {
     acceleration.add(f);
   }
 
-  void run() {
+  public void run() {
     if (!hitObstacle && !hitTarget) {
       // walk on gene and apply current force
       applyForce(dna.genes[geneCounter]);
@@ -277,13 +293,13 @@ class Rocket {
     }
   }
 
-  void update() {
+  public void update() {
     velocity.add(acceleration);
     position.add(velocity);
     acceleration.mult(0);
   }
 
-  void display() {
+  public void display() {
     float theta = velocity.heading2D() + PI/2;
     pushMatrix();
 
@@ -303,11 +319,11 @@ class Rocket {
     popMatrix();
   }
 
-  float getFitness() {
+  public float getFitness() {
     return fitness;
   }
 
-  DNA getDNA() {
+  public DNA getDNA() {
     return dna;
   }
 }
@@ -341,13 +357,13 @@ class Population {
     }
   }
 
-  void fitness() {
+  public void fitness() {
     for (int i = 0; i < population.length; i++) {
       population[i].fitness();
     }
   }
 
-  void selection() {
+  public void selection() {
 
     matingPool.clear();
 
@@ -365,12 +381,12 @@ class Population {
   }
 
   // Making the next generation
-  void reproduction() {
+  public void reproduction() {
     // Refill the population with children from the mating pool
     for (int i = 0; i < population.length; i++) {
       // Sping the wheel of fortune to pick two parents
-      int m = int(random(matingPool.size()));
-      int d = int(random(matingPool.size()));
+      int m = PApplet.parseInt(random(matingPool.size()));
+      int d = PApplet.parseInt(random(matingPool.size()));
       // Pick two parents
       Rocket mom = matingPool.get(m);
       Rocket dad = matingPool.get(d);
@@ -388,12 +404,12 @@ class Population {
     generations++;
   }
 
-  int getGenerations() {
+  public int getGenerations() {
     return generations;
   }
 
   // Find highest fintess for the population
-  float getMaxFitness() {
+  public float getMaxFitness() {
     float record = 0;
     for (int i = 0; i < population.length; i++) {
        if(population[i].getFitness() > record) {
@@ -403,13 +419,13 @@ class Population {
     return record;
   }
 
-  void run() {
+  public void run() {
     while (!criteria_met) {
       if (cycles < lifetime) {
         for (int i = 0; i < population.length; i++) {
           if (population[i].checkTarget()) {
             finished_count++;
-            if (finished_count >= 0.5 * population.length) {
+            if (finished_count >= 0.5f * population.length) {
               criteria_met = true;
             }
           }
@@ -434,10 +450,10 @@ int start;
 int timer;
 boolean timer_finished = false;
 
-void setup() {
+public void setup() {
   // 720p
-  size(1280, 720, P2D);
-  smooth(8);
+  
+  
 
   // results csv
   Table results = new Table();
@@ -462,7 +478,7 @@ void setup() {
     populations = new Population[num_populations];
     finished_counter = 0;
     for (int j = 0; j < populations.length; j++) {
-      populations[j] = new Population(0.01, population_size, j);
+      populations[j] = new Population(0.01f, population_size, j);
     }
     // run all populations sequentially until goal is met for each one
     start = millis();
@@ -482,9 +498,9 @@ void setup() {
 }
 
 // drawing loop
-void draw_() {
+public void draw_() {
 
-  background(#f9f8eb);
+  background(0xfff9f8eb);
 
   ArrayList<Obstacle> obstacles = new ArrayList<Obstacle>();
   obstacles.add(new Obstacle(width/2-100, height/2 + 200, 200, 10));
@@ -511,4 +527,14 @@ void draw_() {
 
   text("Time elapsed: " + timer + "ms\nPopulations finished: " + finished_counter + "/" + populations.length, 20, 30);
 
+}
+  public void settings() {  size(1280, 720, P2D);  smooth(8); }
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "smartrocketsseq" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
+  }
 }

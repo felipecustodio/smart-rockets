@@ -1,6 +1,4 @@
-* {
-  font-family: Helvetica !important;
-}
+* { max-width: 40em; max-width: 150ch; }
 
 h1,h2,h3,a {
   -o-transition:.5s;
